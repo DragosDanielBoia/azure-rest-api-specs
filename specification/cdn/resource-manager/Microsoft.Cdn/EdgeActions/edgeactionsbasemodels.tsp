@@ -72,7 +72,29 @@ union EdgeActionIsDefaultVersion {
   False: "False",
 }
 
+/** The deployment status for edge action version code. */
+@added(Versions.`2026-10-01`)
+union EdgeActionDeploymentStatus {
+  string,
+
+  /** No code deployment has been durably accepted. */
+  NotStarted: "NotStarted",
+
+  /** A code deployment has been durably accepted and is not terminal. */
+  InProgress: "InProgress",
+
+  /** Code deployment succeeded. */
+  Succeeded: "Succeeded",
+
+  /** Code deployment failed. */
+  Failed: "Failed",
+
+  /** Code deployment was canceled. */
+  Canceled: "Canceled",
+}
+
 /** The status of an operation */
+@Azure.Core.lroStatus
 union OperationStatus {
   string,
 
@@ -87,6 +109,35 @@ union OperationStatus {
 
   /** Operation was canceled */
   Canceled: "Canceled",
+}
+
+/** Polling guidance for an asynchronous EdgeActions operation. */
+@added(Versions.`2026-10-01`)
+model EdgeActionRetryAfterHeader {
+  /** The number of seconds to wait before polling again. */
+  @header("Retry-After")
+  @minValue(10)
+  @maxValue(600)
+  retryAfter?: int32;
+}
+
+/** Polling headers for an asynchronous EdgeActions PUT response. */
+@added(Versions.`2026-10-01`)
+model EdgeActionPutLroHeaders<FinalResult extends TypeSpec.Reflection.Model> {
+  ...ArmAsyncOperationHeader<
+    StatusMonitor = EdgeActionOperationProperties,
+    UrlValue = ResourceLocation<EdgeActionOperationProperties>,
+    FinalResult = FinalResult
+  >;
+  ...EdgeActionRetryAfterHeader;
+}
+
+/** Resource replacement accepted for asynchronous processing. */
+@added(Versions.`2026-10-01`)
+@doc("Resource '{name}' update operation succeeded", Resource)
+model EdgeActionResourceUpdatedLroResponse<Resource extends Azure.ResourceManager.Foundations.SimpleResource> {
+  ...ArmResourceUpdatedResponse<Resource>;
+  ...EdgeActionPutLroHeaders<Resource>;
 }
 
 @pattern("[a-zA-Z0-9]+")
@@ -119,6 +170,10 @@ union ProvisioningState {
 
   @doc("Upgrade in progress")
   Upgrading: "Upgrading",
+
+  /** Deletion is in progress. */
+  @added(Versions.`2026-10-01`)
+  Deleting: "Deleting",
 }
 
 /** Edge action attachment information */
@@ -157,14 +212,22 @@ model EdgeActionProperties {
 /** The type used for update operations of the EdgeAction. */
 model EdgeActionUpdate {
   @doc("The resource-specific properties for this resource.")
+  @removed(Versions.`2026-10-01`)
   properties?: EdgeActionPropertiesUpdate;
 
   @doc("The sku type of the edge action")
+  @removed(Versions.`2026-10-01`)
   sku?: SkuTypeUpdate;
 
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-no-record" "FIXME: Update justification, follow aka.ms/tsp/conversion-fix for details"
   @doc("Resource tags.")
   tags?: Record<string>;
+}
+
+/** The type used for update operations of the EdgeActionVersion. */
+@added(Versions.`2026-10-01`)
+model EdgeActionVersionUpdate {
+  ...Azure.ResourceManager.Foundations.ArmTagsProperty;
 }
 
 /** Represents an edge action properties */
@@ -187,8 +250,20 @@ model EdgeActionVersionProperties {
   provisioningState?: ProvisioningState;
 
   @doc("The active state")
+  @removed(Versions.`2026-10-01`)
+  @renamedFrom(Versions.`2026-10-01`, "isDefaultVersion")
   @visibility(Lifecycle.Read, Lifecycle.Create, Lifecycle.Update)
-  isDefaultVersion: EdgeActionIsDefaultVersion;
+  isDefaultVersionPreview: EdgeActionIsDefaultVersion;
+
+  @doc("Indicates whether this is the default version.")
+  @added(Versions.`2026-10-01`)
+  @visibility(Lifecycle.Read)
+  isDefaultVersion: boolean;
+
+  /** The status of the latest accepted code deployment. */
+  @added(Versions.`2026-10-01`)
+  @visibility(Lifecycle.Read)
+  deploymentStatus: EdgeActionDeploymentStatus;
 
   @doc("The last update time in UTC for package update")
   @visibility(Lifecycle.Read)
@@ -227,31 +302,41 @@ model VersionCode {
   content: string;
 
   @doc("The version code name")
+  @removed(Versions.`2026-10-01`)
+  @renamedFrom(Versions.`2026-10-01`, "name")
   @visibility(Lifecycle.Read, Lifecycle.Create, Lifecycle.Update)
-  name: string;
+  namePreview: string;
 }
 
 /** Edge action operation properties */
+@added(Versions.`2026-10-01`)
 model EdgeActionOperationProperties {
   @doc("The resource id of the operation.")
+  @visibility(Lifecycle.Read)
   resourceId: string;
 
   @doc("The GUID representing operationID.")
+  @visibility(Lifecycle.Read)
   operationId: string;
 
   @doc("The current status of the operation.")
+  @visibility(Lifecycle.Read)
   status: OperationStatus;
 
   @doc("The operation type.")
+  @visibility(Lifecycle.Read)
   operationType: string;
 
   @doc("The start time of the operation.")
+  @visibility(Lifecycle.Read)
   startTime?: utcDateTime;
 
   @doc("The end time of the operation (if completed).")
+  @visibility(Lifecycle.Read)
   endTime?: utcDateTime;
 
   @doc("Error details, if applicable.")
+  @visibility(Lifecycle.Read)
   error?: ErrorDetails;
 }
 
